@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: nba-team-builder-api
+    name: budget-gm-api
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
@@ -8,4 +8,11 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: PYTHON_VERSION
-        value: 3.9.16 
+        value: 3.9.16
+  - type: static
+    name: budget-gm
+    buildCommand: cd nba-team-builder-react && npm install && npm run build
+    staticPublishPath: nba-team-builder-react/build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://budget-gm-api.onrender.com 
