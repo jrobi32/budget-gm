@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Team Builder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>NBA Team Builder</h1>
+        <p>Build your team with a $10 budget</p>
+    </header>
+
+    <main>
+        <div class="player-info">
+            <input type="text" id="player-name" placeholder="Enter your nickname" required>
+            <div class="input-hint">Don't forget to enter your nickname!</div>
+        </div>
+
+        <div class="team-section">
+            <h2>Your Team</h2>
+            <div class="selected-players"></div>
+            <div class="record-display">-</div>
+            <button id="submit-team" onclick="submitTeam()" disabled>Submit Team</button>
+        </div>
+
+        <div class="player-section">
+            <h2>Available Players</h2>
+            <!-- Player options will be dynamically added here -->
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/team_builder.js') }}"></script>
+</body>
+</html> 

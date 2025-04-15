@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Daily Team Builder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>NBA Daily Team Builder</h1>
+        <p class="challenge-date">Challenge Date: {{ challenge.date }}</p>
+        <div class="user-info">
+            {% if player_name %}
+                <p>Welcome, {{ player_name }}! <a href="{{ url_for('logout') }}">Logout</a></p>
+            {% else %}
+                <form action="{{ url_for('login') }}" method="post" class="login-form">
+                    <input type="text" name="player_name" placeholder="Enter your name" required>
+                    <button type="submit">Login</button>
+                </form>
+            {% endif %}
+        </div>
+    </header>
+
+    <main>
+        <section class="team-section">
+            <h2>Your Team</h2>
+            <div class="selected-players">
+                <!-- Selected players will be displayed here -->
+            </div>
+            <div class="team-controls">
+                <p class="budget-display">Remaining Budget: $10</p>
+                <button id="submit-button" onclick="submitTeam()" disabled>Submit Team</button>
+                <button onclick="resetTeam()">Reset Team</button>
+            </div>
+            <div class="simulation-results">
+                <h3>Projected Record</h3>
+                <p class="record-display">-</p>
+            </div>
+        </section>
+
+        <section class="players-section">
+            <h2>Today's Available Players</h2>
+            <!-- Player options will be displayed here -->
+        </section>
+
+        <section class="leaderboard-section">
+            <h2>Today's Leaderboard</h2>
+            <a href="{{ url_for('leaderboard') }}" class="view-leaderboard-btn">View Full Leaderboard</a>
+            <div class="leaderboard-preview">
+                <!-- Leaderboard preview will be displayed here -->
+            </div>
+        </section>
+    </main>
+
+    <div id="submission-modal" class="modal">
+        <div class="modal-content">
+            <h2>Team Submitted!</h2>
+            <p>Your team has been submitted for today's challenge.</p>
+            <p>Your projected record: <span id="submitted-record">-</span></p>
+            <a href="{{ url_for('leaderboard') }}" class="btn">View Leaderboard</a>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/team_builder.js') }}"></script>
+</body>
+</html> 

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Daily Team Builder - Leaderboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>NBA Daily Team Builder</h1>
+        <p class="challenge-date">Challenge Date: {{ challenge_date }}</p>
+        <div class="user-info">
+            {% if player_name %}
+                <p>Welcome, {{ player_name }}! <a href="{{ url_for('logout') }}">Logout</a></p>
+            {% else %}
+                <form action="{{ url_for('login') }}" method="post" class="login-form">
+                    <input type="text" name="player_name" placeholder="Enter your name" required>
+                    <button type="submit">Login</button>
+                </form>
+            {% endif %}
+        </div>
+    </header>
+
+    <main>
+        <section class="leaderboard-section">
+            <h2>Today's Leaderboard</h2>
+            <a href="{{ url_for('index') }}" class="back-btn">Back to Team Builder</a>
+            
+            {% if player_rank %}
+                <div class="player-rank">
+                    <h3>Your Rank: #{{ player_rank }}</h3>
+                </div>
+            {% endif %}
+            
+            <div class="leaderboard-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Record</th>
+                            <th>Win %</th>
+                            <th>Team</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for submission in leaderboard %}
+                            <tr class="{% if submission.player_name == player_name %}highlight{% endif %}">
+                                <td>#{{ loop.index }}</td>
+                                <td>{{ submission.player_name }}</td>
+                                <td>{{ submission.record.wins }}-{{ submission.record.losses }}</td>
+                                <td>{{ "%.1f"|format(submission.record.wins / 82 * 100) }}%</td>
+                                <td>
+                                    <ul class="team-list">
+                                        {% for player in submission.team %}
+                                            <li>{{ player.name }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="no-submissions">No submissions yet for today's challenge.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/leaderboard.js') }}"></script>
+</body>
+</html> 
