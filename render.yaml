@@ -9,10 +9,11 @@ services:
         generateValue: true
       - key: PYTHON_VERSION
         value: 3.9.16
-  - type: static
+  - type: web
     name: budget-gm
+    env: static
     buildCommand: cd nba-team-builder-react && npm install && npm run build
-    staticPublishPath: nba-team-builder-react/build
+    staticPublishPath: ./nba-team-builder-react/build
     envVars:
       - key: REACT_APP_API_URL
         value: https://budget-gm-api.onrender.com 
