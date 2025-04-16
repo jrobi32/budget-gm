@@ -16,7 +16,7 @@ const TeamBuilder = () => {
 
     useEffect(() => {
         loadPlayerPool();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const loadPlayerPool = async () => {
         try {
