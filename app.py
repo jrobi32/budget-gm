@@ -5,6 +5,7 @@ from models import DailyChallenge
 import os
 from flask_cors import CORS
 from datetime import datetime
+import random
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -229,6 +230,25 @@ def get_challenge_by_date(date):
         'date': challenge.date,
         'player_pool': challenge.player_pool
     })
+
+def load_player_pool():
+    try:
+        with open('player_pool.json', 'r') as f:
+            full_pool = json.load(f)
+            
+        # Select 5 random players from each category
+        limited_pool = {}
+        for category in ['$3', '$2', '$1', '$0']:
+            players = full_pool.get(category, [])
+            if len(players) > 5:
+                limited_pool[category] = random.sample(players, 5)
+            else:
+                limited_pool[category] = players
+                
+        return limited_pool
+    except Exception as e:
+        print(f"Error loading player pool: {e}")
+        return {"$3": [], "$2": [], "$1": [], "$0": []}
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
