@@ -3,6 +3,11 @@ import pandas as pd
 import numpy as np
 import random
 import math
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Player:
     def __init__(self, name, points, rebounds, assists, steals, blocks, fg_pct, ft_pct, three_pt_pct):
@@ -54,214 +59,243 @@ class Player:
 class TeamSimulator:
     def __init__(self, budget=10):
         self.budget = budget
+        self.player_pool = self._load_player_pool()
         self.team = []
         self.team_stats = None
-        
-        # Load player pool
+        self.league_averages = {
+            'points': 110.0,
+            'rebounds': 44.0,
+            'assists': 24.0,
+            'steals': 7.5,
+            'blocks': 5.0,
+            'fg_pct': 0.46,
+            'ft_pct': 0.78,
+            'three_pct': 0.36
+        }
+
+    def _load_player_pool(self):
         try:
             with open('player_pool.json', 'r') as f:
-                self.player_pool = json.load(f)
-        except FileNotFoundError:
-            print("Error: player_pool.json not found")
-            self.player_pool = {"$3": [], "$2": [], "$1": [], "$0": []}
-        
-    def simulate_team(self, players):
-        """
-        Simulate a team's season and return the win probability
-        """
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading player pool: {str(e)}")
+            return {}
+
+    def _calculate_team_quality(self, team_stats):
+        """Calculate team quality based on key stats"""
         try:
-            print(f"Starting team simulation for players: {players}")
+            # Weighted average of key stats
+            weights = {
+                'PTS': 0.3,
+                'REB': 0.2,
+                'AST': 0.2,
+                'STL': 0.1,
+                'BLK': 0.1,
+                'FG%': 0.05,
+                '3P%': 0.05
+            }
             
-            # Build the team first
-            self.build_team(players)
+            quality = 0
+            for stat, weight in weights.items():
+                if stat in team_stats:
+                    # Normalize stats to 0-1 range
+                    if stat in ['FG%', '3P%']:
+                        normalized = team_stats[stat] / 100
+                    else:
+                        # Use league averages as reference points
+                        normalized = team_stats[stat] / self.league_averages[stat]
+                    quality += normalized * weight
             
-            if not self.team:
-                print("Error: No players were added to the team")
-                return 0.0
-                
-            if len(self.team) < 5:
-                print(f"Error: Team has fewer than 5 players. Current team size: {len(self.team)}")
-                return 0.0
+            return quality
+        except Exception as e:
+            logger.error(f"Error calculating team quality: {str(e)}")
+            return 0.5
+
+    def _adjust_win_probability(self, base_prob, team_quality):
+        """Adjust win probability based on team quality"""
+        try:
+            # Boost win probability for good teams
+            if team_quality > 1.0:  # Above average team
+                boost = min(0.2, (team_quality - 1.0) * 0.4)  # Max 20% boost
+                adjusted_prob = min(0.9, base_prob + boost)  # Cap at 90%
+            else:
+                adjusted_prob = max(0.1, base_prob)  # Floor at 10%
             
-            # Calculate win probability
-            win_probability = self.calculate_win_probability()
-            print(f"Calculated win probability: {win_probability}")
+            return adjusted_prob
+        except Exception as e:
+            logger.error(f"Error adjusting win probability: {str(e)}")
+            return base_prob
+
+    def simulate_team(self, players):
+        """Simulate a team's season"""
+        try:
+            logger.info(f"Simulating team with players: {players}")
             
-            return win_probability
+            # Get team stats
+            team_stats = self.calculate_team_stats(players)
+            if not team_stats:
+                logger.error("Failed to calculate team stats")
+                return None
+            
+            # Calculate team quality
+            team_quality = self._calculate_team_quality(team_stats)
+            logger.info(f"Team quality: {team_quality}")
+            
+            # Calculate base win probability
+            base_win_prob = self._calculate_win_probability(team_stats)
+            
+            # Adjust win probability based on team quality
+            win_prob = self._adjust_win_probability(base_win_prob, team_quality)
+            logger.info(f"Adjusted win probability: {win_prob}")
+            
+            # Simulate season
+            wins = 0
+            losses = 0
+            for _ in range(82):
+                if random.random() < win_prob:
+                    wins += 1
+                else:
+                    losses += 1
+            
+            return {
+                'wins': wins,
+                'losses': losses,
+                'win_probability': win_prob,
+                'team_stats': team_stats
+            }
             
         except Exception as e:
-            print(f"Error in simulate_team: {str(e)}")
-            raise
-        
-    def build_team(self, players):
-        """
-        Build a team from a list of player names
-        """
-        total_cost = 0
-        self.team = []
-        
-        print(f"Building team with players: {players}")
-        print(f"Player pool structure: {self.player_pool}")
-        
-        for player_name in players:
-            # Find player's cost
-            player_found = False
-            for cost, player_list in self.player_pool.items():
-                print(f"Checking {cost} players...")
-                for player in player_list:
-                    # Case-insensitive matching and handle partial matches
-                    if player['name'].lower() in player_name.lower() or player_name.lower() in player['name'].lower():
-                        print(f"Found match: {player['name']} for {player_name}")
-                        player_cost = int(cost[1])  # Convert "$3" to 3, etc.
-                        if total_cost + player_cost <= self.budget:
-                            self.team.append(player)
-                            total_cost += player_cost
-                            player_found = True
-                            print(f"Added {player['name']} to team. Total cost: ${total_cost}")
-                            break
-                if player_found:
-                    break
-            
-            if not player_found:
-                print(f"Warning: Player {player_name} not found in player pool or exceeds budget. Skipping.")
-                
-        if len(self.team) < 5:
-            print(f"Warning: Team has fewer than 5 players. Current team size: {len(self.team)}")
-            
-        # Calculate team stats
-        self._calculate_team_stats()
-        
-    def _calculate_team_stats(self):
-        """
-        Calculate team statistics by averaging player stats
-        """
-        if not self.team:
-            return
-            
-        # Initialize stats dictionary
-        team_stats = {
-            'points': 0,
-            'rebounds': 0,
-            'assists': 0,
-            'steals': 0,
-            'blocks': 0,
-            'fg_pct': 0,
-            'ft_pct': 0,
-            'three_pct': 0,
-            'minutes': 0,
-            'games_played': 0
-        }
-        
-        # Sum up stats for all players
-        for player in self.team:
-            stats = player['stats']
-            for stat in team_stats:
-                team_stats[stat] += stats[stat]
-        
-        # Calculate averages
-        for stat in team_stats:
-            team_stats[stat] /= len(self.team)
-            
-        self.team_stats = team_stats
-        
-    def calculate_win_probability(self):
-        """
-        Calculate the team's win probability based on their stats
-        """
-        if not self.team_stats:
-            return 0.0
-            
-        # Get league averages
-        league_avgs = self._get_league_averages()
-        
-        # Calculate team rating with adjusted weights
-        team_rating = (
-            self.team_stats['points'] * 0.35 +  # Increased weight for scoring
-            self.team_stats['rebounds'] * 0.15 +
-            self.team_stats['assists'] * 0.15 +
-            self.team_stats['steals'] * 0.1 +
-            self.team_stats['blocks'] * 0.1 +
-            self.team_stats['fg_pct'] * 0.1 +
-            self.team_stats['ft_pct'] * 0.05 +
-            self.team_stats['three_pct'] * 0.05
-        )
-        
-        # Calculate league average rating
-        league_rating = (
-            league_avgs['points'] * 0.35 +  # Match the team rating weights
-            league_avgs['rebounds'] * 0.15 +
-            league_avgs['assists'] * 0.15 +
-            league_avgs['steals'] * 0.1 +
-            league_avgs['blocks'] * 0.1 +
-            league_avgs['fg_pct'] * 0.1 +
-            league_avgs['ft_pct'] * 0.05 +
-            league_avgs['three_pct'] * 0.05
-        )
-        
-        # Calculate win probability using modified logistic function
-        rating_diff = team_rating - league_rating
-        
-        # Add a slight boost to make 50-win teams more common
-        base_win_prob = 1 / (1 + np.exp(-rating_diff * 0.15))  # Increased sensitivity
-        
-        # Add a small boost for teams with good stats
-        if base_win_prob > 0.4:  # Only boost teams that are already decent
-            boost = (base_win_prob - 0.4) * 0.2  # 20% boost for teams above 0.4
-            win_prob = min(0.85, base_win_prob + boost)  # Cap at 85% to maintain some randomness
-        else:
-            win_prob = base_win_prob
-            
-        return win_prob
-        
-    def _get_league_averages(self):
-        """
-        Get league average statistics
-        """
-        # These are approximate NBA league averages
-        return {
-            'points': 15.0,
-            'rebounds': 5.0,
-            'assists': 3.5,
-            'steals': 1.0,
-            'blocks': 0.5,
-            'fg_pct': 0.45,
-            'ft_pct': 0.75,
-            'three_pct': 0.35,
-            'minutes': 25.0,
-            'games_played': 60.0
-        }
-        
-    def simulate_season(self):
-        """
-        Simulate a season with the current team
-        """
-        if not self.team_stats:
+            logger.error(f"Error in simulate_team: {str(e)}")
             return None
+
+    def build_team(self, player_names):
+        """Build a team from a list of player names"""
+        try:
+            logger.info(f"Building team with players: {player_names}")
+            team = []
             
-        # Get win probability
-        win_prob = self.calculate_win_probability()
-        
-        # Simulate 82 games
-        wins = 0
-        for _ in range(82):
-            if np.random.random() < win_prob:
-                wins += 1
+            for name in player_names:
+                player_found = False
+                for category in self.player_pool.values():
+                    for player in category:
+                        if player['name'] == name:
+                            team.append(player)
+                            player_found = True
+                            logger.info(f"Found player {name} in player pool")
+                            break
+                    if player_found:
+                        break
                 
-        losses = 82 - wins
-        win_pct = wins / 82
-        
-        # Calculate power rating
-        power_rating = win_prob * 100
-        
-        # Determine if team makes playoffs
-        makes_playoffs = win_pct >= 0.5
+                if not player_found:
+                    logger.error(f"Player {name} not found in player pool")
+                    return None
+
+            if len(team) != 5:
+                logger.error(f"Team has {len(team)} players instead of 5")
+                return None
+
+            logger.info("Team built successfully")
+            return team
+
+        except Exception as e:
+            logger.error(f"Error in build_team: {str(e)}")
+            return None
+
+    def get_random_players(self, count=5):
+        """Get random players from each category"""
+        try:
+            logger.info(f"Getting {count} random players from each category")
+            random_players = {}
+            
+            for category, players in self.player_pool.items():
+                if len(players) >= count:
+                    selected = random.sample(players, count)
+                    random_players[category] = selected
+                    logger.info(f"Selected {count} random players from {category}")
+                else:
+                    logger.warning(f"Not enough players in {category} to select {count}")
+                    random_players[category] = players
+
+            return random_players
+
+        except Exception as e:
+            logger.error(f"Error in get_random_players: {str(e)}")
+            return None
+
+    def _calculate_team_stats(self, team):
+        """Calculate team statistics from player stats"""
+        try:
+            logger.info("Calculating team stats")
+            team_stats = {
+                'points': 0,
+                'rebounds': 0,
+                'assists': 0,
+                'steals': 0,
+                'blocks': 0,
+                'fg_pct': 0,
+                'ft_pct': 0,
+                'three_pct': 0,
+                'minutes': 0
+            }
+
+            for player in team:
+                stats = player['stats']
+                for stat in team_stats:
+                    if stat in stats:
+                        # Convert numpy.float64 to float
+                        team_stats[stat] += float(stats[stat])
+
+            # Average the percentages
+            for stat in ['fg_pct', 'ft_pct', 'three_pct']:
+                team_stats[stat] /= 5
+
+            logger.info(f"Team stats calculated: {team_stats}")
+            return team_stats
+
+        except Exception as e:
+            logger.error(f"Error in _calculate_team_stats: {str(e)}")
+            return None
+
+    def calculate_win_probability(self, team_stats):
+        """Calculate win probability based on team stats"""
+        try:
+            logger.info("Calculating win probability")
+            league_averages = self.league_averages
+            
+            # Calculate team rating
+            team_rating = (
+                (team_stats['points'] / league_averages['points']) * 0.3 +
+                (team_stats['rebounds'] / league_averages['rebounds']) * 0.15 +
+                (team_stats['assists'] / league_averages['assists']) * 0.15 +
+                (team_stats['steals'] / league_averages['steals']) * 0.1 +
+                (team_stats['blocks'] / league_averages['blocks']) * 0.1 +
+                (team_stats['fg_pct'] / league_averages['fg_pct']) * 0.1 +
+                (team_stats['ft_pct'] / league_averages['ft_pct']) * 0.05 +
+                (team_stats['three_pct'] / league_averages['three_pct']) * 0.05
+            )
+
+            # Convert numpy.float64 to float
+            team_rating = float(team_rating)
+
+            # Calculate win probability using logistic function
+            win_probability = 1 / (1 + math.exp(-(team_rating - 1) * 5))
+            
+            logger.info(f"Win probability calculated: {win_probability}")
+            return win_probability
+
+        except Exception as e:
+            logger.error(f"Error in calculate_win_probability: {str(e)}")
+            return None
+
+    def simulate_season(self, num_games=82):
+        game_results = []
+        for _ in range(num_games):
+            game_result = self.simulate_game()
+            game_results.append(game_result)
         
         return {
-            'wins': wins,
-            'losses': losses,
-            'win_pct': win_pct,
-            'power_rating': power_rating,
-            'makes_playoffs': makes_playoffs
+            'game_results': game_results,
+            'player_stats': self.team
         }
 
     def simulate_game(self):
@@ -334,17 +368,6 @@ class TeamSimulator:
             'result': result,
             'team_points': team_points,
             'opponent_points': opponent_points,
-            'player_stats': self.team
-        }
-
-    def simulate_season(self, num_games=82):
-        game_results = []
-        for _ in range(num_games):
-            game_result = self.simulate_game()
-            game_results.append(game_result)
-        
-        return {
-            'game_results': game_results,
             'player_stats': self.team
         }
 
