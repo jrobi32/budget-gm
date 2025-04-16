@@ -3,73 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NBA Daily Team Builder - Leaderboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Daily Challenge Leaderboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #1d428a;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        .leaderboard {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .leaderboard-header {
+            background-color: #1d428a;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .leaderboard-header h2 {
+            margin: 0;
+        }
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .leaderboard-table th {
+            background-color: #f0f0f0;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .leaderboard-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .leaderboard-table tr:last-child td {
+            border-bottom: none;
+        }
+        .leaderboard-table tr:hover {
+            background-color: #f9f9f9;
+        }
+        .rank {
+            font-weight: bold;
+            color: #1d428a;
+            width: 50px;
+        }
+        .player-name {
+            font-weight: 500;
+        }
+        .record {
+            font-family: monospace;
+            font-size: 1.1em;
+        }
+        .percentile {
+            font-weight: 500;
+        }
+        .percentile-high {
+            color: #34C759;
+        }
+        .percentile-medium {
+            color: #FF9500;
+        }
+        .percentile-low {
+            color: #FF3B30;
+        }
+        .player-info {
+            display: flex;
+            align-items: center;
+        }
+        .player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            object-fit: cover;
+        }
+        .date-selector {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .date-selector select {
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 1em;
+            background-color: white;
+        }
+        .your-rank {
+            background-color: #e6f3ff;
+            font-weight: 500;
+        }
+        .your-rank .player-name {
+            color: #1d428a;
+        }
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        .nav-button {
+            padding: 10px 20px;
+            background-color: #1d428a;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .nav-button:hover {
+            background-color: #153366;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>NBA Daily Team Builder</h1>
-        <p class="challenge-date">Challenge Date: {{ challenge_date }}</p>
-        <div class="user-info">
+    <div class="container">
+        <div class="header">
+            <h1>Daily Challenge Leaderboard</h1>
+            <p>See how your team ranks against others!</p>
+        </div>
+        
+        <div class="date-selector">
+            <select id="date-select" onchange="changeDate()">
+                {% for date in available_dates %}
+                <option value="{{ date }}" {% if date == challenge_date %}selected{% endif %}>
+                    {{ date }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="leaderboard">
+            <div class="leaderboard-header">
+                <h2>Top Performers</h2>
+                <span>{{ challenge_date }}</span>
+            </div>
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Record</th>
+                        <th>Percentile</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for submission in leaderboard %}
+                    <tr class="{% if submission.player_name == player_name %}your-rank{% endif %}">
+                        <td class="rank">{{ loop.index }}</td>
+                        <td class="player-name">
+                            <div class="player-info">
+                                {% if submission.players[0].image_url %}
+                                <img src="{{ submission.players[0].image_url }}" alt="Player" class="player-avatar">
+                                {% endif %}
+                                {{ submission.player_name }}
+                            </div>
+                        </td>
+                        <td class="record">{{ submission.record.display }}</td>
+                        <td class="percentile {% if submission.percentile >= 80 %}percentile-high{% elif submission.percentile >= 50 %}percentile-medium{% else %}percentile-low{% endif %}">
+                            {{ submission.percentile }}%
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="nav-buttons">
+            <a href="/" class="nav-button">Back to Team Builder</a>
             {% if player_name %}
-                <p>Welcome, {{ player_name }}! <a href="{{ url_for('logout') }}">Logout</a></p>
+            <a href="/logout" class="nav-button">Logout</a>
             {% else %}
-                <form action="{{ url_for('login') }}" method="post" class="login-form">
-                    <input type="text" name="player_name" placeholder="Enter your name" required>
-                    <button type="submit">Login</button>
-                </form>
+            <a href="/" class="nav-button">Login</a>
             {% endif %}
         </div>
-    </header>
-
-    <main>
-        <section class="leaderboard-section">
-            <h2>Today's Leaderboard</h2>
-            <a href="{{ url_for('index') }}" class="back-btn">Back to Team Builder</a>
-            
-            {% if player_rank %}
-                <div class="player-rank">
-                    <h3>Your Rank: #{{ player_rank }}</h3>
-                </div>
-            {% endif %}
-            
-            <div class="leaderboard-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Player</th>
-                            <th>Record</th>
-                            <th>Win %</th>
-                            <th>Team</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for submission in leaderboard %}
-                            <tr class="{% if submission.player_name == player_name %}highlight{% endif %}">
-                                <td>#{{ loop.index }}</td>
-                                <td>{{ submission.player_name }}</td>
-                                <td>{{ submission.record.wins }}-{{ submission.record.losses }}</td>
-                                <td>{{ "%.1f"|format(submission.record.wins / 82 * 100) }}%</td>
-                                <td>
-                                    <ul class="team-list">
-                                        {% for player in submission.team %}
-                                            <li>{{ player.name }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="5" class="no-submissions">No submissions yet for today's challenge.</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </main>
-
-    <script src="{{ url_for('static', filename='js/leaderboard.js') }}"></script>
+    </div>
+    
+    <script>
+        function changeDate() {
+            const dateSelect = document.getElementById('date-select');
+            const selectedDate = dateSelect.value;
+            window.location.href = `/leaderboard?date=${selectedDate}`;
+        }
+    </script>
 </body>
 </html> 

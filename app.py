@@ -4,10 +4,11 @@ from team_simulator import TeamSimulator
 from models import DailyChallenge
 import os
 from flask_cors import CORS
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
-app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')  # Use environment variable if available
 
 # Ensure data directory exists
 os.makedirs('data/challenges', exist_ok=True)
@@ -44,7 +45,16 @@ def logout():
 
 @app.route('/api/player_pool')
 def get_player_pool():
-    challenge = DailyChallenge()
+    # Check if a date parameter is provided
+    date = request.args.get('date')
+    
+    if date:
+        # Load the challenge for the specified date
+        challenge = DailyChallenge(date)
+    else:
+        # Get the current challenge
+        challenge = DailyChallenge()
+    
     # Ensure the player pool is properly formatted
     player_pool = challenge.player_pool
     
@@ -76,7 +86,11 @@ def simulate_team():
         # Calculate projected record
         wins = round(win_probability * 82)
         losses = 82 - wins
-        record = f"{wins}-{losses}"
+        record = {
+            'wins': wins,
+            'losses': losses,
+            'display': f"{wins}-{losses}"
+        }
         
         return jsonify({
             'record': record,
@@ -91,6 +105,7 @@ def submit_team():
     data = request.get_json()
     player_name = data.get('player_name')
     players = data.get('players')
+    date = data.get('date')  # Optional date parameter
     
     if not player_name or not players:
         return jsonify({'error': 'Missing player name or players'}), 400
@@ -99,65 +114,128 @@ def submit_team():
         return jsonify({'error': 'Team must have exactly 5 players'}), 400
     
     try:
+        # Get the challenge for the specified date or today
+        challenge = DailyChallenge(date) if date else DailyChallenge()
+        
+        # Check if the player has already submitted for this date
+        existing_submission = challenge.get_player_submission(player_name)
+        if existing_submission:
+            return jsonify({
+                'error': 'You have already submitted a team for this date',
+                'submission': existing_submission
+            }), 400
+        
         # Simulate the team
         simulator = TeamSimulator()
-        record = simulator.simulate_team(players)
+        win_probability = simulator.simulate_team(players)
+        
+        # Calculate record
+        wins = round(win_probability * 82)
+        losses = 82 - wins
+        record = {
+            'wins': wins,
+            'losses': losses,
+            'display': f"{wins}-{losses}"
+        }
         
         # Submit the team
-        challenge = DailyChallenge()
-        challenge.submit_team(player_name, players, record)
+        result = challenge.submit_team(player_name, players, record)
+        
+        # Get percentile message
+        percentile_message = challenge.get_percentile_message(result['percentile'])
         
         return jsonify({
             'success': True,
-            'record': record
+            'record': record,
+            'percentile': result['percentile'],
+            'percentile_message': percentile_message
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/leaderboard')
 def leaderboard():
-    challenge = DailyChallenge()
+    # Check if a date parameter is provided
+    date = request.args.get('date')
+    
+    if date:
+        # Load the challenge for the specified date
+        challenge = DailyChallenge(date)
+    else:
+        # Get the current challenge
+        challenge = DailyChallenge()
+    
     leaderboard_data = challenge.get_leaderboard()
     
     player_name = session.get('player_name')
     player_rank = None
+    player_percentile = None
     
     if player_name:
         for i, submission in enumerate(leaderboard_data):
             if submission['player_name'] == player_name:
                 player_rank = i + 1
+                player_percentile = submission.get('percentile', 0)
                 break
     
     return render_template('leaderboard.html', 
                           leaderboard=leaderboard_data,
                           player_name=player_name,
                           player_rank=player_rank,
+                          player_percentile=player_percentile,
                           challenge_date=challenge.date)
 
 @app.route('/api/check_submission')
 def check_submission():
     player_name = request.args.get('player_name')
+    date = request.args.get('date')  # Optional date parameter
+    
     if not player_name:
         return jsonify({'error': 'Missing player name'}), 400
     
-    challenge = DailyChallenge()
+    # Get the challenge for the specified date or today
+    challenge = DailyChallenge(date) if date else DailyChallenge()
+    
     submission = challenge.get_player_submission(player_name)
     return jsonify({
-        'has_submission': submission is not None
+        'has_submission': submission is not None,
+        'submission': submission
     })
 
 @app.route('/api/submitted_team')
 def get_submitted_team():
     player_name = request.args.get('player_name')
+    date = request.args.get('date')  # Optional date parameter
+    
     if not player_name:
         return jsonify({'error': 'Missing player name'}), 400
     
-    challenge = DailyChallenge()
+    # Get the challenge for the specified date or today
+    challenge = DailyChallenge(date) if date else DailyChallenge()
+    
     submission = challenge.get_player_submission(player_name)
     if not submission:
         return jsonify({'error': 'No submission found'}), 404
     
     return jsonify(submission)
 
+@app.route('/api/available_dates')
+def get_available_dates():
+    challenge = DailyChallenge()
+    dates = challenge.get_available_dates()
+    return jsonify(dates)
+
+@app.route('/api/challenge/<date>')
+def get_challenge_by_date(date):
+    challenge = DailyChallenge(date)
+    if not challenge.player_pool:
+        return jsonify({'error': 'Challenge not found'}), 404
+    
+    return jsonify({
+        'date': challenge.date,
+        'player_pool': challenge.player_pool
+    })
+
 if __name__ == '__main__':
-    app.run(debug=True) 
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port) 

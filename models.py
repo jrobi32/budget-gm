@@ -114,15 +114,101 @@ class DailyChallenge:
                 if player_found:
                     break
         
+        # Calculate percentile rank
+        percentile = self.calculate_percentile(player_name, record)
+        
         self.submissions[player_name] = {
             'players': players_with_stats,
-            'record': record
+            'record': record,
+            'percentile': percentile,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         self.save_challenge()
+        
+        return {
+            'players': players_with_stats,
+            'record': record,
+            'percentile': percentile
+        }
+    
+    def calculate_percentile(self, player_name, record):
+        """Calculate the percentile rank of a player's submission"""
+        # Get all submissions with records
+        submissions_with_records = [
+            sub for sub in self.submissions.values() 
+            if 'record' in sub and isinstance(sub['record'], dict) and 'wins' in sub['record']
+        ]
+        
+        # Add the current submission if it's not already in the list
+        current_submission = {
+            'player_name': player_name,
+            'record': record
+        }
+        
+        if current_submission not in submissions_with_records:
+            submissions_with_records.append(current_submission)
+        
+        # Sort by wins (descending)
+        sorted_submissions = sorted(
+            submissions_with_records,
+            key=lambda x: (x['record']['wins'], -x['record']['losses']),
+            reverse=True
+        )
+        
+        # Find the rank of the current submission
+        total_submissions = len(sorted_submissions)
+        if total_submissions <= 1:
+            return 100  # If there's only one submission, it's the best
+        
+        # Find the index of the current submission
+        for i, sub in enumerate(sorted_submissions):
+            if sub['player_name'] == player_name:
+                # Calculate percentile (higher is better)
+                percentile = 100 - ((i / (total_submissions - 1)) * 100)
+                return round(percentile, 1)
+        
+        return 0  # Default if not found
+    
+    def get_percentile_message(self, percentile):
+        """Get a friendly message based on the percentile rank"""
+        if percentile >= 90:
+            return f"You were in the top {percentile}% of players for today's game!"
+        elif percentile >= 75:
+            return f"You were in the top {percentile}% of players for today's game!"
+        elif percentile >= 50:
+            return f"You were in the top {percentile}% of players for today's game!"
+        elif percentile >= 25:
+            return f"You were in the top {percentile}% of players for today's game!"
+        else:
+            return f"You were in the top {percentile}% of players for today's game!"
     
     def load_player_pool(self):
         try:
             with open('player_pool.json', 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
-            return {"$3": [], "$2": [], "$1": [], "$0": []} 
+            return {"$3": [], "$2": [], "$1": [], "$0": []}
+    
+    def get_available_dates(self):
+        """Get a list of all available challenge dates"""
+        challenge_dir = 'data/challenges'
+        if not os.path.exists(challenge_dir):
+            return []
+        
+        dates = []
+        for filename in os.listdir(challenge_dir):
+            if filename.endswith('.json'):
+                date = filename.replace('.json', '')
+                dates.append(date)
+        
+        return sorted(dates, reverse=True)
+    
+    def get_challenge_by_date(self, date):
+        """Get a challenge by date"""
+        challenge_file = f'data/challenges/{date}.json'
+        if not os.path.exists(challenge_file):
+            return None
+        
+        with open(challenge_file, 'r') as f:
+            data = json.load(f)
+            return data 
