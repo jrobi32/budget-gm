@@ -9,9 +9,19 @@ def load_player_pool():
     """Load the player pool from the JSON file"""
     try:
         with open('player_pool.json', 'r') as f:
-            return json.load(f)
+            player_pool = json.load(f)
+            print(f"Loaded player pool with {sum(len(players) for players in player_pool.values())} players")
+            print(f"Number of players in each category:")
+            for cost, players in player_pool.items():
+                print(f"{cost}: {len(players)} players")
+                if players:
+                    print(f"First player in {cost}: {players[0]['name']}")
+            return player_pool
     except FileNotFoundError:
         print("Error: player_pool.json not found. Please run player_pool_data.py first.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error loading player pool: {e}")
         sys.exit(1)
 
 def get_random_players(player_pool, category, count=5):
@@ -21,9 +31,14 @@ def get_random_players(player_pool, category, count=5):
         return []
     players = player_pool[category]
     if len(players) < count:
-        print(f"Warning: Not enough players in {category} category")
+        print(f"Warning: Not enough players in {category} category (have {len(players)}, need {count})")
         return players
-    return random.sample(players, count)
+    
+    selected_players = random.sample(players, count)
+    print(f"Selected {len(selected_players)} players from {category} category:")
+    for player in selected_players:
+        print(f"  - {player['name']}")
+    return selected_players
 
 def display_player_options(player_pool, show_stats=False):
     """Display 5 random players from each cost category"""

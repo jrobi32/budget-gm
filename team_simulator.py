@@ -69,13 +69,29 @@ class TeamSimulator:
         """
         Simulate a team's season and return the win probability
         """
-        # Build the team first
-        self.build_team(players)
-        
-        # Calculate win probability
-        win_probability = self.calculate_win_probability()
-        
-        return win_probability
+        try:
+            print(f"Starting team simulation for players: {players}")
+            
+            # Build the team first
+            self.build_team(players)
+            
+            if not self.team:
+                print("Error: No players were added to the team")
+                return 0.0
+                
+            if len(self.team) < 5:
+                print(f"Error: Team has fewer than 5 players. Current team size: {len(self.team)}")
+                return 0.0
+            
+            # Calculate win probability
+            win_probability = self.calculate_win_probability()
+            print(f"Calculated win probability: {win_probability}")
+            
+            return win_probability
+            
+        except Exception as e:
+            print(f"Error in simulate_team: {str(e)}")
+            raise
         
     def build_team(self, players):
         """
@@ -84,18 +100,24 @@ class TeamSimulator:
         total_cost = 0
         self.team = []
         
+        print(f"Building team with players: {players}")
+        print(f"Player pool structure: {self.player_pool}")
+        
         for player_name in players:
             # Find player's cost
             player_found = False
             for cost, player_list in self.player_pool.items():
+                print(f"Checking {cost} players...")
                 for player in player_list:
                     # Case-insensitive matching and handle partial matches
                     if player['name'].lower() in player_name.lower() or player_name.lower() in player['name'].lower():
+                        print(f"Found match: {player['name']} for {player_name}")
                         player_cost = int(cost[1])  # Convert "$3" to 3, etc.
                         if total_cost + player_cost <= self.budget:
                             self.team.append(player)
                             total_cost += player_cost
                             player_found = True
+                            print(f"Added {player['name']} to team. Total cost: ${total_cost}")
                             break
                 if player_found:
                     break
@@ -104,7 +126,7 @@ class TeamSimulator:
                 print(f"Warning: Player {player_name} not found in player pool or exceeds budget. Skipping.")
                 
         if len(self.team) < 5:
-            print("Warning: Team has fewer than 5 players")
+            print(f"Warning: Team has fewer than 5 players. Current team size: {len(self.team)}")
             
         # Calculate team stats
         self._calculate_team_stats()

@@ -45,33 +45,28 @@ def logout():
 
 @app.route('/api/player_pool')
 def get_player_pool():
-    # Check if a date parameter is provided
-    date = request.args.get('date')
-    
-    if date:
-        # Load the challenge for the specified date
-        challenge = DailyChallenge(date)
-    else:
+    try:
         # Get the current challenge
         challenge = DailyChallenge()
-    
-    # Ensure the player pool is properly formatted
-    player_pool = challenge.player_pool
-    
-    # Log the player pool for debugging
-    print("Player pool structure:", player_pool.keys())
-    for category in player_pool:
-        print(f"{category} players: {len(player_pool[category])}")
-        if len(player_pool[category]) > 0:
-            print(f"First player in {category}: {player_pool[category][0]['name']}")
-    
-    return jsonify(player_pool)
+        
+        # Debug logging
+        print(f"Player pool structure: {challenge.player_pool}")
+        print(f"Number of players in each category:")
+        for cost, players in challenge.player_pool.items():
+            print(f"{cost}: {len(players)} players")
+            if players:
+                print(f"First player in {cost}: {players[0]}")
+        
+        return jsonify(challenge.player_pool)
+    except Exception as e:
+        print(f"Error getting player pool: {e}")
+        return jsonify({'error': 'Error getting player pool'}), 500
 
 @app.route('/api/simulate', methods=['POST'])
 def simulate_team():
     data = request.get_json()
     players = data.get('players', [])
-    player_name = data.get('playerName', '')
+    player_name = data.get('player_name', '')
     
     if len(players) != 5:
         return jsonify({'error': 'Team must have exactly 5 players'}), 400
@@ -103,19 +98,18 @@ def simulate_team():
 @app.route('/api/submit_team', methods=['POST'])
 def submit_team():
     data = request.get_json()
-    player_name = data.get('player_name')
-    players = data.get('players')
-    date = data.get('date')  # Optional date parameter
-    
-    if not player_name or not players:
-        return jsonify({'error': 'Missing player name or players'}), 400
+    players = data.get('players', [])
+    player_name = data.get('player_name', '')
     
     if len(players) != 5:
         return jsonify({'error': 'Team must have exactly 5 players'}), 400
     
+    if not player_name:
+        return jsonify({'error': 'Player name is required'}), 400
+    
     try:
         # Get the challenge for the specified date or today
-        challenge = DailyChallenge(date) if date else DailyChallenge()
+        challenge = DailyChallenge()
         
         # Check if the player has already submitted for this date
         existing_submission = challenge.get_player_submission(player_name)

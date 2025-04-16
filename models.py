@@ -24,17 +24,35 @@ class DailyChallenge:
                     self.submissions = {sub['player_name']: sub for sub in submissions}
                 else:
                     self.submissions = submissions
+                
+                # Debug logging
+                print(f"Loaded challenge for {self.date}")
+                print(f"Player pool structure: {self.player_pool}")
+                print(f"Number of players in each category:")
+                for cost, players in self.player_pool.items():
+                    print(f"{cost}: {len(players)} players")
+                    if players:
+                        print(f"First player in {cost}: {players[0]['name']}")
         else:
             # Create a new challenge with random players
+            print(f"Challenge file not found for {self.date}, generating new challenge...")
             self.generate_new_challenge()
+            # Save the new challenge
+            self.save_challenge()
     
     def generate_new_challenge(self):
         """Generate a new challenge with random players from the player pool"""
         from team_builder import get_random_players
         
         # Load the full player pool
-        with open('player_pool.json', 'r') as f:
-            full_pool = json.load(f)
+        try:
+            with open('player_pool.json', 'r') as f:
+                full_pool = json.load(f)
+                print(f"Loaded full player pool with {sum(len(players) for players in full_pool.values())} players")
+        except FileNotFoundError:
+            print("Error: player_pool.json not found")
+            self.player_pool = {"$3": [], "$2": [], "$1": [], "$0": []}
+            return
         
         # Select 5 random players from each cost category
         self.player_pool = {
@@ -44,21 +62,38 @@ class DailyChallenge:
             '$0': get_random_players(full_pool, '$0', 5)
         }
         
+        # Debug logging
+        print(f"Generated new challenge for {self.date}")
+        print(f"Player pool structure: {self.player_pool}")
+        print(f"Number of players in each category:")
+        for cost, players in self.player_pool.items():
+            print(f"{cost}: {len(players)} players")
+            if players:
+                print(f"First player in {cost}: {players[0]['name']}")
+        
         # Save the new challenge
         self.save_challenge()
     
     def save_challenge(self):
         """Save the current challenge to a file"""
-        # Ensure the directory exists
+        # Ensure the data directory exists
         os.makedirs('data/challenges', exist_ok=True)
         
+        # Create the challenge data
+        challenge_data = {
+            'date': self.date,
+            'player_pool': self.player_pool,
+            'submissions': self.submissions
+        }
+        
+        # Save to file
         challenge_file = f'data/challenges/{self.date}.json'
-        with open(challenge_file, 'w') as f:
-            json.dump({
-                'date': self.date,
-                'player_pool': self.player_pool,
-                'submissions': self.submissions
-            }, f, indent=2)
+        try:
+            with open(challenge_file, 'w') as f:
+                json.dump(challenge_data, f, indent=2)
+            print(f"Saved challenge to {challenge_file}")
+        except Exception as e:
+            print(f"Error saving challenge: {e}")
     
     def add_submission(self, player_name, team, record):
         """Add a player submission to the challenge"""
