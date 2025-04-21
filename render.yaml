@@ -1,19 +1,29 @@
 services:
   - type: web
-    name: budget-gm-api
+    name: budget-gm-backend
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: PORT
+        value: 10000
       - key: SECRET_KEY
         generateValue: true
-      - key: PYTHON_VERSION
-        value: 3.9.16
+    healthCheckPath: /api/player_pool
+    autoDeploy: true
+
   - type: web
-    name: budget-gm
-    env: static
-    buildCommand: cd nba-team-builder-react && npm install && npm run build
-    staticPublishPath: ./nba-team-builder-react/build
+    name: budget-gm-frontend
+    env: node
+    buildCommand: cd budget-gm-frontend && npm install && npm run build
+    startCommand: cd budget-gm-frontend && npm start
     envVars:
       - key: REACT_APP_API_URL
-        value: https://budget-gm-api.onrender.com 
+        sync: false
+        value: https://budget-gm-backend.onrender.com
+      - key: PORT
+        value: 3000
+    healthCheckPath: /
+    autoDeploy: true 

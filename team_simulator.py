@@ -57,7 +57,7 @@ class Player:
         self.season_stats['games_played'] += 1
 
 class TeamSimulator:
-    def __init__(self, budget=10):
+    def __init__(self, budget=15):
         self.budget = budget
         self.player_pool = self._load_player_pool()
         self.team = []
@@ -72,6 +72,7 @@ class TeamSimulator:
             'ft_pct': 0.78,
             'three_pct': 0.36
         }
+        self.logger = logging.getLogger(__name__)
 
     def _load_player_pool(self):
         try:
@@ -79,7 +80,13 @@ class TeamSimulator:
                 return json.load(f)
         except Exception as e:
             logger.error(f"Error loading player pool: {str(e)}")
-            return {}
+            return {
+                '$5': [],
+                '$4': [],
+                '$3': [],
+                '$2': [],
+                '$1': []
+            }
 
     def _calculate_team_quality(self, team_stats):
         """Calculate team quality based on key stats"""
@@ -142,7 +149,7 @@ class TeamSimulator:
             logger.info(f"Team quality: {team_quality}")
             
             # Calculate base win probability
-            base_win_prob = self._calculate_win_probability(team_stats)
+            base_win_prob = self.calculate_win_probability(team_stats)
             
             # Adjust win probability based on team quality
             win_prob = self._adjust_win_probability(base_win_prob, team_quality)
@@ -156,7 +163,7 @@ class TeamSimulator:
                     wins += 1
                 else:
                     losses += 1
-            
+                    
             return {
                 'wins': wins,
                 'losses': losses,
@@ -371,6 +378,14 @@ class TeamSimulator:
             'player_stats': self.team
         }
 
+    def validate_team(self, team):
+        """Validate if a team is within budget and has exactly 5 players"""
+        if len(team) != 5:
+            return False
+            
+        total_cost = sum(int(player['cost'][1]) for player in team)  # Convert "$5" to 5, etc.
+        return total_cost <= self.budget
+
 def main():
     # Test the simulator
     simulator = TeamSimulator(budget=11)
@@ -419,13 +434,13 @@ def main():
         print("\nSimulating season...")
         results = simulator.simulate_season()
         
-        print("\nSeason Simulation Results:")
+            print("\nSeason Simulation Results:")
         print(f"Team Composition (Total: ${sum(player['cost'] for player in team['players'])}):")
         for player in team['players']:
             print(f"- {player['name']}: ${player['cost']}")
         print(f"\nWins: {results['wins']}")
-        print(f"Losses: {results['losses']}")
-        print(f"Win Percentage: {results['win_pct']:.3f}")
+            print(f"Losses: {results['losses']}")
+            print(f"Win Percentage: {results['win_pct']:.3f}")
         print(f"Power Rating: {results['power_rating']:.1f}")
         print(f"{'Made playoffs' if results['makes_playoffs'] else 'Did not make playoffs'}")
         print(f"{'='*50}")

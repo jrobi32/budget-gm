@@ -51,15 +51,16 @@ class DailyChallenge:
                 print(f"Loaded full player pool with {sum(len(players) for players in full_pool.values())} players")
         except FileNotFoundError:
             print("Error: player_pool.json not found")
-            self.player_pool = {"$3": [], "$2": [], "$1": [], "$0": []}
+            self.player_pool = {"$5": [], "$4": [], "$3": [], "$2": [], "$1": []}
             return
         
         # Select 5 random players from each cost category
         self.player_pool = {
+            '$5': get_random_players(full_pool, '$5', 5),
+            '$4': get_random_players(full_pool, '$4', 5),
             '$3': get_random_players(full_pool, '$3', 5),
             '$2': get_random_players(full_pool, '$2', 5),
-            '$1': get_random_players(full_pool, '$1', 5),
-            '$0': get_random_players(full_pool, '$0', 5)
+            '$1': get_random_players(full_pool, '$1', 5)
         }
         
         # Debug logging
@@ -222,7 +223,7 @@ class DailyChallenge:
             with open('player_pool.json', 'r') as f:
                 return json.load(f)
         except FileNotFoundError:
-            return {"$3": [], "$2": [], "$1": [], "$0": []}
+            return {"$5": [], "$4": [], "$3": [], "$2": [], "$1": []}
     
     def get_available_dates(self):
         """Get a list of all available challenge dates"""

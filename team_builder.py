@@ -66,16 +66,16 @@ def build_team():
     player_pool = load_player_pool()
     
     # Initialize team simulator
-    simulator = TeamSimulator(budget=10)
+    simulator = TeamSimulator(budget=15)  # Updated budget for new system
     selected_players = []
-    remaining_budget = 10
+    remaining_budget = 15  # Updated budget for new system
     
-    print("\nSelect your team (5 players total, budget of $10):")
+    print("\nSelect your team (5 players total, budget of $15):")
     print("===============================================")
     
     # Get initial set of random players for each category
     displayed_players = {}
-    for cost in ["$3", "$2", "$1", "$0"]:
+    for cost in ["$5", "$4", "$3", "$2", "$1"]:
         displayed_players[cost] = get_random_players(player_pool, cost)
     
     while len(selected_players) < 5:

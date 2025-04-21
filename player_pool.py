@@ -4,6 +4,9 @@ import numpy as np
 from typing import Dict, List, Tuple
 import json
 import random
+import logging
+from categorize_players import categorize_players, get_multi_season_stats, convert_to_json_format
+from datetime import datetime
 
 class PlayerPool:
     def __init__(self):
@@ -24,13 +27,19 @@ class PlayerPool:
             for cost, player_list in categorized_players.items():
                 for player_data in player_list:
                     player_name = player_data['name']
-                    self.players[player_name] = {'cost': int(cost)}
+                    self.players[player_name] = {
+                        'cost': int(cost[1]),  # Convert "$5" to 5
+                        'stats': player_data['stats']
+                    }
                     self.player_stats[player_name] = pd.Series(player_data['stats'])
                     
-            print(f"Loaded {len(self.players)} players from pre-built pool")
+            logging.info("Player pool loaded successfully")
             
         except FileNotFoundError:
-            print("Player pool not found. Building it first...")
+            logging.warning("Player pool file not found. Building new player pool...")
+            self._build_player_pool()
+        except json.JSONDecodeError:
+            logging.error("Error decoding player pool JSON file")
             self._build_player_pool()
             
     def _build_player_pool(self):
@@ -39,38 +48,31 @@ class PlayerPool:
         """
         print("Building complete NBA player pool...")
         
-        # Get all active players
-        active_players = self.data_fetcher.get_active_players()
-        print(f"Found {len(active_players)} active players")
+        # Get current season
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+        current_season = f"{current_year-1}-{str(current_year)[2:]}" if current_month < 10 else f"{current_year}-{str(current_year+1)[2:]}"
         
-        # Initialize categorized players
-        categorized_players = {
-            '3': [],  # MVP candidates
-            '2': [],  # All-Stars
-            '1': [],  # Quality starters
-            '0': []   # Role players
-        }
+        # Get stats for last 3 seasons
+        seasons = [
+            current_season,
+            f"{int(current_season[:4])-1}-{str(int(current_season[:4]))[-2:]}",
+            f"{int(current_season[:4])-2}-{str(int(current_season[:4])-1)[-2:]}"
+        ]
         
-        # Process each player
-        for i, player in enumerate(active_players, 1):
-            print(f"Processing player {i}/{len(active_players)}: {player}")
-            
-            try:
-                stats = self.data_fetcher.get_player_stats(player)
-                if stats is not None:
-                    cost = self._calculate_player_cost(stats)
-                    categorized_players[str(cost)].append({
-                        'name': player,
-                        'stats': stats.to_dict()
-                    })
-                    print(f"Added {player} to ${cost} category")
-            except Exception as e:
-                print(f"Error processing {player}: {str(e)}")
-                continue
+        # Get and process stats
+        logging.info("Fetching player statistics for the last 3 seasons...")
+        avg_stats = get_multi_season_stats(seasons)
+        logging.info("Categorizing players...")
+        categorized_players = categorize_players(avg_stats)
+        
+        # Convert to JSON format
+        logging.info("Converting to JSON format...")
+        json_data = convert_to_json_format(categorized_players)
         
         # Save to JSON file
         with open('player_pool.json', 'w') as f:
-            json.dump(categorized_players, f, indent=2)
+            json.dump(json_data, f, indent=2)
         
         print("\nPlayer pool saved to player_pool.json")
         print("Category counts:")
@@ -213,7 +215,10 @@ class PlayerPool:
                     cost = self._value_to_cost(value)
                     
                     # Add player to pool
-                    self.players[player_name] = {'cost': cost}
+                    self.players[player_name] = {
+                        'cost': cost,
+                        'stats': stats
+                    }
                     self.player_stats[player_name] = stats
                 
     def _calculate_player_value(self, stats: pd.Series) -> float:
@@ -295,18 +300,18 @@ class PlayerPool:
         cost = 1 + (normalized * 4)  # Scale to 1-5 range
         
         # Adjusted ranges to properly value stars:
-        # $1: 1.0 - 2.0 (role players)
-        # $2: 2.0 - 2.8 (solid role players)
-        # $3: 2.8 - 3.5 (good starters)
-        # $4: 3.5 - 4.0 (all-stars)
-        # $5: 4.0+ (superstars)
-        if cost < 2.0:
+        # $1: 1.0 - 1.8 (role players)
+        # $2: 1.8 - 2.6 (solid role players)
+        # $3: 2.6 - 3.4 (good starters)
+        # $4: 3.4 - 4.2 (all-stars)
+        # $5: 4.2+ (superstars)
+        if cost < 1.8:
             return 1
-        elif cost < 2.8:
+        elif cost < 2.6:
             return 2
-        elif cost < 3.5:
+        elif cost < 3.4:
             return 3
-        elif cost < 4.0:
+        elif cost < 4.2:
             return 4
         else:
             return 5
@@ -375,7 +380,10 @@ def main():
         if stats is not None:
             value = pool._calculate_player_value(stats)
             cost = pool._value_to_cost(value)
-            pool.players[player] = {'cost': cost}
+            pool.players[player] = {
+                'cost': cost,
+                'stats': stats
+            }
             pool.player_stats[player] = stats
     
     # Print players by tier with more detailed stats

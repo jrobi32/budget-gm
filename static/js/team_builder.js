@@ -57,7 +57,7 @@ function displayPlayerOptions() {
     const playerSection = document.querySelector('.player-section');
     playerSection.innerHTML = '';
 
-    const categories = ['$3', '$2', '$1', '$0'];
+    const categories = ['$5', '$4', '$3', '$2', '$1'];
     categories.forEach(category => {
         const categoryDiv = document.createElement('div');
         categoryDiv.className = 'category';

@@ -13,7 +13,19 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+
+# Configure CORS
+CORS(app, resources={
+    r"/*": {
+        "origins": ["https://budgetgm.netlify.app", "http://localhost:3000"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
+        "expose_headers": ["Content-Type", "Authorization", "Accept"],
+        "supports_credentials": False,
+        "max_age": 600
+    }
+})
+
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')  # Use environment variable if available
 
 # Ensure data directory exists
@@ -21,6 +33,25 @@ os.makedirs('data/challenges', exist_ok=True)
 
 # Initialize team simulator
 simulator = TeamSimulator()
+
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = app.make_default_options_response()
+        # Add CORS headers
+        response.headers["Access-Control-Allow-Origin"] = "https://budgetgm.netlify.app"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, X-Requested-With"
+        response.headers["Access-Control-Max-Age"] = "600"
+        return response
+
+@app.after_request
+def add_cors_headers(response):
+    # Add CORS headers to all responses
+    response.headers["Access-Control-Allow-Origin"] = "https://budgetgm.netlify.app"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, X-Requested-With"
+    return response
 
 @app.route('/')
 def index():
@@ -55,11 +86,32 @@ def logout():
 @app.route('/api/player_pool')
 def get_player_pool():
     try:
-        # Get 5 random players from each category
-        random_players = simulator.get_random_players(count=5)
-        if not random_players:
-            return jsonify({'error': 'Failed to get random players'}), 500
-        return jsonify(random_players)
+        logger.info('Received request for player pool')
+        logger.info('Request headers: %s', request.headers)
+        
+        # Get the full player pool
+        player_pool = simulator.player_pool
+        if not player_pool:
+            logger.error("Empty player pool")
+            return jsonify({'error': 'Empty player pool'}), 500
+            
+        # Ensure we have all required categories
+        required_categories = ['$5', '$4', '$3', '$2', '$1']
+        for category in required_categories:
+            if category not in player_pool:
+                logger.error(f"Missing category in player pool: {category}")
+                return jsonify({'error': f'Missing category: {category}'}), 500
+                
+        # Limit to 5 players per category
+        limited_pool = {}
+        for category in required_categories:
+            players = player_pool[category]
+            limited_pool[category] = players[:5] if len(players) > 5 else players
+            
+        logger.info(f"Returning player pool with {len(limited_pool)} categories")
+        response = jsonify(limited_pool)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
     except Exception as e:
         logger.error(f"Error getting player pool: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -253,7 +305,7 @@ def load_player_pool():
             
         # Select 5 random players from each category
         limited_pool = {}
-        for category in ['$3', '$2', '$1', '$0']:
+        for category in ['$5', '$4', '$3', '$2', '$1']:
             players = full_pool.get(category, [])
             if len(players) > 5:
                 limited_pool[category] = random.sample(players, 5)
@@ -263,7 +315,7 @@ def load_player_pool():
         return limited_pool
     except Exception as e:
         print(f"Error loading player pool: {e}")
-        return {"$3": [], "$2": [], "$1": [], "$0": []}
+        return {"$5": [], "$4": [], "$3": [], "$2": [], "$1": []}
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
