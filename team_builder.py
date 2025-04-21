@@ -45,7 +45,7 @@ def display_player_options(player_pool, show_stats=False):
     print("\nPlayer Options:")
     print("==============")
     
-    for cost in ["$3", "$2", "$1", "$0"]:
+    for cost in ["$5", "$4", "$3", "$2", "$1"]:
         print(f"\n{cost} Players:")
         players = get_random_players(player_pool, cost)
         for player in players:
@@ -89,7 +89,7 @@ def build_team():
             print("\nCurrent team:")
             total_cost = 0
             for player, cost in selected_players:
-                total_cost += int(cost[1])  # Convert "$3" to 3, etc.
+                total_cost += int(cost[1])  # Convert "$5" to 5, etc.
                 print(f"- {player['name']} ({cost})")
             print(f"Total spent: ${total_cost}")
         print("="*50)
@@ -101,9 +101,9 @@ def build_team():
         # Create a name-to-player mapping
         name_to_player = {}
         
-        for cost in ["$3", "$2", "$1", "$0"]:
+        for cost in ["$5", "$4", "$3", "$2", "$1"]:
             # Only show players we can afford
-            if int(cost[1]) <= remaining_budget or cost == "$0":
+            if int(cost[1]) <= remaining_budget or cost == "$1":
                 print(f"\n{cost} Players:")
                 players = displayed_players[cost]
                 for player in players:
@@ -124,13 +124,13 @@ def build_team():
                 break
             elif choice == 'r':
                 # Refresh the displayed players
-                for cost in ["$3", "$2", "$1", "$0"]:
+                for cost in ["$5", "$4", "$3", "$2", "$1"]:
                     displayed_players[cost] = get_random_players(player_pool, cost)
                 continue
                 
             if choice in name_to_player:
                 selected_player, cost = name_to_player[choice]
-                player_cost = int(cost[1])  # Convert "$3" to 3, etc.
+                player_cost = int(cost[1])  # Convert "$5" to 5, etc.
                 
                 if player_cost <= remaining_budget:
                     selected_players.append((selected_player, cost))
@@ -154,7 +154,7 @@ def build_team():
         print("\nYour final team:")
         total_cost = 0
         for player, cost in selected_players:
-            total_cost += int(cost[1])  # Convert "$3" to 3, etc.
+            total_cost += int(cost[1])  # Convert "$5" to 5, etc.
             print(f"- {player['name']} ({cost})")
         print(f"\nTotal spent: ${total_cost}")
         print("="*50)
@@ -166,8 +166,8 @@ def build_team():
 if __name__ == "__main__":
     print("NBA Team Builder")
     print("===============")
-    print("This program will help you build a team of 5 players with a $10 budget.")
-    print("You'll be shown 5 random players from each cost category ($3, $2, $1, $0).")
+    print("This program will help you build a team of 5 players with a $15 budget.")
+    print("You'll be shown 5 random players from each cost category ($5, $4, $3, $2, $1).")
     print("Select players to add to your team.")
     
     team = build_team()
