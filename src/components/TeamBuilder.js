@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import './TeamBuilder.css';
 
@@ -13,20 +13,33 @@ const TeamBuilder = () => {
     const [record, setRecord] = useState(null);
     const [playerName, setPlayerName] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        loadPlayerPool();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    const loadPlayerPool = async () => {
+    const loadPlayerPool = useCallback(async () => {
+        setIsLoading(true);
         try {
             const response = await axios.get(`${API_URL}/api/player-pool`);
             setPlayerPool(response.data);
             updatePlayerOptions(response.data);
+            setError('');
         } catch (error) {
-            setError('Error loading player pool');
+            setError('Error loading player pool: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setIsLoading(false);
         }
-    };
+    }, [API_URL]);
+
+    useEffect(() => {
+        let isMounted = true;
+        
+        if (isMounted) {
+            loadPlayerPool();
+        }
+
+        return () => {
+            isMounted = false;
+        };
+    }, [loadPlayerPool]);
 
     const updatePlayerOptions = (pool) => {
         const options = [];
@@ -78,20 +91,29 @@ const TeamBuilder = () => {
             return;
         }
 
+        if (!playerName.trim()) {
+            setError('Please enter your name');
+            return;
+        }
+
+        setIsLoading(true);
         try {
             const response = await axios.post(`${API_URL}/api/simulate`, {
                 players: selectedPlayers.map(p => p.name),
-                player_name: playerName
+                player_name: playerName.trim()
             });
             setRecord(response.data);
             setError('');
         } catch (error) {
-            setError('Error simulating team');
+            setError('Error simulating team: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
         <div className="team-builder">
+            {isLoading && <div className="loading">Loading...</div>}
             <div className="team-section">
                 <h2>Your Team</h2>
                 <div className="budget-display">
