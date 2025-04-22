@@ -15,33 +15,7 @@ const TeamBuilder = () => {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const loadPlayerPool = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const response = await axios.get(`${API_URL}/api/player-pool`);
-            setPlayerPool(response.data);
-            updatePlayerOptions(response.data);
-            setError('');
-        } catch (error) {
-            setError('Error loading player pool: ' + (error.response?.data?.message || error.message));
-        } finally {
-            setIsLoading(false);
-        }
-    }, [API_URL]);
-
-    useEffect(() => {
-        let isMounted = true;
-        
-        if (isMounted) {
-            loadPlayerPool();
-        }
-
-        return () => {
-            isMounted = false;
-        };
-    }, [loadPlayerPool]);
-
-    const updatePlayerOptions = (pool) => {
+    const updatePlayerOptions = useCallback((pool) => {
         const options = [];
         ['$3', '$2', '$1', '$0'].forEach(category => {
             if (pool[category]) {
@@ -57,7 +31,37 @@ const TeamBuilder = () => {
             }
         });
         setPlayerOptions(options);
-    };
+    }, [selectedPlayers]);
+
+    const loadPlayerPool = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const response = await axios.get(`${API_URL}/api/player-pool`);
+            setPlayerPool(response.data);
+            updatePlayerOptions(response.data);
+            setError('');
+        } catch (error) {
+            setError('Error loading player pool: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setIsLoading(false);
+        }
+    }, [updatePlayerOptions]);
+
+    useEffect(() => {
+        let isMounted = true;
+        
+        const fetchData = async () => {
+            if (isMounted) {
+                await loadPlayerPool();
+            }
+        };
+
+        fetchData();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [loadPlayerPool]);
 
     const selectPlayer = (player) => {
         if (selectedPlayers.length >= 5) {
