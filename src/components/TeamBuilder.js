@@ -15,12 +15,13 @@ const TeamBuilder = () => {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const updatePlayerOptions = useCallback((pool) => {
+    // Memoized function to filter players based on current state
+    const filterPlayers = useCallback((pool, currentSelectedPlayers) => {
         const options = [];
         ['$3', '$2', '$1', '$0'].forEach(category => {
             if (pool[category]) {
                 const players = pool[category].filter(player => 
-                    !selectedPlayers.some(p => p.name === player.name)
+                    !currentSelectedPlayers.some(p => p.name === player.name)
                 );
                 if (players.length > 0) {
                     options.push(...players.map(player => ({
@@ -30,15 +31,23 @@ const TeamBuilder = () => {
                 }
             }
         });
-        setPlayerOptions(options);
-    }, [selectedPlayers]);
+        return options;
+    }, []);
 
+    // Memoized function to update player options
+    const updatePlayerOptions = useCallback((pool) => {
+        const filteredOptions = filterPlayers(pool, selectedPlayers);
+        setPlayerOptions(filteredOptions);
+    }, [filterPlayers, selectedPlayers]);
+
+    // Memoized function to load player pool
     const loadPlayerPool = useCallback(async () => {
         setIsLoading(true);
         try {
             const response = await axios.get(`${API_URL}/api/player-pool`);
-            setPlayerPool(response.data);
-            updatePlayerOptions(response.data);
+            const newPlayerPool = response.data;
+            setPlayerPool(newPlayerPool);
+            updatePlayerOptions(newPlayerPool);
             setError('');
         } catch (error) {
             setError('Error loading player pool: ' + (error.response?.data?.message || error.message));
@@ -47,6 +56,7 @@ const TeamBuilder = () => {
         }
     }, [API_URL, updatePlayerOptions]);
 
+    // Initial data loading effect
     useEffect(() => {
         let isMounted = true;
         
