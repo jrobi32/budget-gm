@@ -45,7 +45,7 @@ const TeamBuilder = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [updatePlayerOptions]);
+    }, [API_URL, updatePlayerOptions]);
 
     useEffect(() => {
         let isMounted = true;
