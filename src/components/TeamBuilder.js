@@ -54,7 +54,7 @@ const TeamBuilder = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [API_URL, updatePlayerOptions]);
+    }, [updatePlayerOptions]);
 
     // Initial data loading effect
     useEffect(() => {
