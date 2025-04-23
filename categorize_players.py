@@ -57,20 +57,20 @@ def categorize_players(df, num_players=500):
     # Sort by rating and get top players
     top_players = df.nlargest(num_players, 'RATING')
     
-    # Create tiers
-    tier_sizes = {
-        '$5': int(num_players * 0.08),   # Top 8%
-        '$4': int(num_players * 0.17),   # Next 17%
-        '$3': int(num_players * 0.25),   # Next 25%
-        '$2': int(num_players * 0.25),   # Next 25%
-        '$1': int(num_players * 0.25)    # Bottom 25%
+    # Calculate number of players per tier
+    tier_counts = {
+        '$5': int(num_players * 0.1),    # Top 10%
+        '$4': int(num_players * 0.2),    # Next 20%
+        '$3': int(num_players * 0.3),    # Next 30%
+        '$2': int(num_players * 0.2),    # Next 20%
+        '$1': int(num_players * 0.2)     # Bottom 20%
     }
     
     # Assign tiers
     top_players['TIER'] = None
     current_idx = 0
     
-    for tier, size in tier_sizes.items():
+    for tier, size in tier_counts.items():
         top_players.iloc[current_idx:current_idx + size, -1] = tier
         current_idx += size
     
@@ -115,7 +115,7 @@ def get_multi_season_stats(seasons):
 
 def convert_to_json_format(df):
     """Convert the DataFrame to the required JSON format"""
-    result = {
+    player_pool = {
         '$5': [],
         '$4': [],
         '$3': [],
@@ -141,12 +141,12 @@ def convert_to_json_format(df):
                     'minutes': float(row['MIN'])
                 }
             }
-            result[row['TIER']].append(player_data)
+            player_pool[row['TIER']].append(player_data)
         except:
             print(f"Warning: Could not convert stats for player {row['PLAYER_NAME']}")
             continue
     
-    return result
+    return player_pool
 
 def main():
     # Get current season

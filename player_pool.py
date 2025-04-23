@@ -107,10 +107,10 @@ class PlayerPool:
     def _calculate_player_cost(self, stats):
         """
         Calculate player cost based on performance metrics averaged over 3 seasons
-        Returns cost from 0-3 dollars
+        Returns cost from 1-5 dollars
         """
         if stats is None:
-            return 0
+            return 1
             
         # Basic stats weights - adjusted to better reflect impact
         weights = {
@@ -174,20 +174,23 @@ class PlayerPool:
             # Less severe penalty for moderate to high games played
             score *= (0.5 + (games_played_percentage - 0.5) * 0.8)  # Scale from 50% to 90%
         
-        # Normalize score to 0-3 range with adjusted thresholds:
-        # $3: Elite players (score > 25) - Only MVP candidates
-        # $2: Very good players (score > 18) - All-Stars and high-end starters
-        # $1: Solid players (score > 12) - Quality starters and good role players
-        # $0: Role players and below (score <= 12) - Bench players and deep bench
+        # Normalize score to 1-5 range with adjusted thresholds:
+        # $5: Superstars (score > 50) - MVP candidates
+        # $4: All-Stars (score > 40) - All-NBA level
+        # $3: Quality starters (score > 30) - High-end starters
+        # $2: Solid role players (score > 20) - Quality role players
+        # $1: Role players (score <= 20) - Bench players
         
-        if score > 25:
+        if score > 50:
+            return 5
+        elif score > 40:
+            return 4
+        elif score > 30:
             return 3
-        elif score > 18:
+        elif score > 20:
             return 2
-        elif score > 12:
-            return 1
         else:
-            return 0
+            return 1
         
     def build_player_pool(self, min_games=20, min_minutes=15):
         """
@@ -302,7 +305,7 @@ class PlayerPool:
         # Adjusted ranges to properly value stars:
         # $1: 1.0 - 1.8 (role players)
         # $2: 1.8 - 2.6 (solid role players)
-        # $3: 2.6 - 3.4 (good starters)
+        # $3: 2.6 - 3.4 (quality starters)
         # $4: 3.4 - 4.2 (all-stars)
         # $5: 4.2+ (superstars)
         if cost < 1.8:

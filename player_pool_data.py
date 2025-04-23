@@ -39,5 +39,18 @@ def build_player_pool():
         logging.error(f"Error building player pool: {str(e)}")
         raise
 
+def convert_weighted_value_to_cost_tier(weighted_value):
+    # Convert weighted value to cost tier
+    if weighted_value >= 50:      # $5: Superstars
+        return 5
+    elif weighted_value >= 40:    # $4: All-Stars
+        return 4
+    elif weighted_value >= 30:    # $3: Quality starters
+        return 3
+    elif weighted_value >= 20:    # $2: Solid role players
+        return 2
+    else:                         # $1: Role players
+        return 1
+
 if __name__ == "__main__":
     build_player_pool() 
